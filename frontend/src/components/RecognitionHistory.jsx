@@ -14,21 +14,30 @@ const RecognitionHistory = () => {
   const [deleting, setDeleting] = useState(null);
   const [expandedEvents, setExpandedEvents] = useState(new Set());
   const [addingFace, setAddingFace] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadHistory();
   }, []);
 
-  const loadHistory = async () => {
+  const loadHistory = async (showRefreshing = false) => {
     try {
-      setLoading(true);
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       const history = await getRecognitionHistory();
       setEvents(history);
     } catch (err) {
       setError(`Failed to load recognition history: ${err.message}`);
     } finally {
-      setLoading(false);
+      if (showRefreshing) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -102,7 +111,20 @@ const RecognitionHistory = () => {
 
   return (
     <div className="card">
-      <h2>Recognition History</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2>Recognition History</h2>
+        <button 
+          className="button" 
+          onClick={() => loadHistory(true)}
+          disabled={refreshing || loading}
+          style={{
+            opacity: (refreshing || loading) ? 0.6 : 1,
+            cursor: (refreshing || loading) ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {refreshing ? 'Refreshing...' : '🔄 Refresh'}
+        </button>
+      </div>
 
       {error && <div className="error">{error}</div>}
 

@@ -8,14 +8,19 @@ const UnknownFaces = ({ onFaceNamed }) => {
   const [naming, setNaming] = useState({});
   const [deleting, setDeleting] = useState(null);
   const [nameInputs, setNameInputs] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadUnknownFaces();
   }, []);
 
-  const loadUnknownFaces = async () => {
+  const loadUnknownFaces = async (showRefreshing = false) => {
     try {
-      setLoading(true);
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       const faces = await getUnknownFaces();
       setUnknownFaces(faces);
@@ -28,7 +33,11 @@ const UnknownFaces = ({ onFaceNamed }) => {
     } catch (err) {
       setError(`Failed to load unknown faces: ${err.message}`);
     } finally {
-      setLoading(false);
+      if (showRefreshing) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -92,7 +101,20 @@ const UnknownFaces = ({ onFaceNamed }) => {
 
   return (
     <div className="card">
-      <h2>Unknown Faces</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2>Unknown Faces</h2>
+        <button 
+          className="button" 
+          onClick={() => loadUnknownFaces(true)}
+          disabled={refreshing || loading}
+          style={{
+            opacity: (refreshing || loading) ? 0.6 : 1,
+            cursor: (refreshing || loading) ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {refreshing ? 'Refreshing...' : '🔄 Refresh'}
+        </button>
+      </div>
 
       {error && <div className="error">{error}</div>}
 

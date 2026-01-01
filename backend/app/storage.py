@@ -65,10 +65,19 @@ class FaceStorage:
             logger.info(f"Processing image for known face: name={name}, image_size={len(image_data)} bytes")
             
             image = face_recognition.load_image_file(BytesIO(image_data))
-            face_encodings = face_recognition.face_encodings(image)
+            
+            # Use CNN model for face detection (consistent with recognition)
+            face_locations = face_recognition.face_locations(image, model="cnn")
+            
+            if not face_locations:
+                logger.warning(f"save_known_face failed: No face detected in image - name={name}")
+                return False
+            
+            # Get encodings for detected faces
+            face_encodings = face_recognition.face_encodings(image, face_locations)
             
             if not face_encodings:
-                logger.warning(f"save_known_face failed: No face detected in image - name={name}")
+                logger.warning(f"save_known_face failed: No face encodings generated - name={name}")
                 return False
             
             logger.info(f"Found {len(face_encodings)} face(s) in image for name={name}, using first face")
