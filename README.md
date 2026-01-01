@@ -139,10 +139,9 @@ Higher values (e.g., 0.8) = more lenient matching
 4. Save the settings
 
 When a known face is recognized, the server will send a GET request to your webhook URL with query parameters:
-- `known_person=true`
-- `name_persons=John,Doe` (comma-separated list of recognized names)
-- `total_faces=2` (number of faces detected)
-- `event_id=recognition_20260101_123456` (unique event identifier)
+- `tag=John,Doe` (comma-separated list of recognized names)
+
+Example: `https://your-automation-system.com/webhook?tag=John,Doe`
 
 **Note**: The server accepts POST requests with form data where the image field is named "image".
 

@@ -94,7 +94,7 @@ const Settings = () => {
           <p style={{ fontSize: '0.85em', color: '#666', marginTop: '5px' }}>
             When a known face is recognized, a GET request will be sent to this URL with query parameters:
             <code style={{ display: 'block', marginTop: '5px', padding: '5px', backgroundColor: '#f5f5f5', borderRadius: '3px' }}>
-              ?known_person=true&name_persons=John,Doe&total_faces=2&event_id=...
+              ?tag=John,Doe
             </code>
           </p>
         </div>

@@ -70,14 +70,10 @@ async def recognize_face(image: UploadFile = File(..., alias="image")):
                 if settings.get("webhook_enabled") and settings.get("webhook_url"):
                     webhook_url = settings["webhook_url"].strip()
                     if webhook_url:
-                        # Build query parameters
+                        # Build query parameters - only send tag with comma-separated names
                         params = {
-                            "known_person": "true",
-                            "name_persons": ",".join(name_persons),
-                            "total_faces": str(result['total_faces'])
+                            "tag": ",".join(name_persons)
                         }
-                        if result.get('event_id'):
-                            params["event_id"] = result['event_id']
                         
                         # Make async GET request (non-blocking)
                         async with httpx.AsyncClient(timeout=5.0) as client:
