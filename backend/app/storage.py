@@ -263,8 +263,49 @@ class FaceStorage:
         person_dir = self.known_path / name
         if person_dir.exists():
             shutil.rmtree(person_dir)
+            logger.info(f"Deleted known person: name={name}")
             return True
         return False
+    
+    def delete_known_face_image(self, name: str, filename: str) -> bool:
+        """Delete a specific face image for a known person."""
+        person_dir = self.known_path / name
+        if not person_dir.exists():
+            logger.warning(f"Person directory not found: name={name}")
+            return False
+        
+        # Delete the image file
+        image_file = person_dir / filename
+        if not image_file.exists():
+            logger.warning(f"Image file not found: name={name}, filename={filename}")
+            return False
+        
+        # Security check: ensure the file is within the person's directory
+        try:
+            image_file.resolve().relative_to(person_dir.resolve())
+        except ValueError:
+            logger.error(f"Security violation: attempted path traversal - name={name}, filename={filename}")
+            return False
+        
+        # Delete the image file
+        try:
+            image_file.unlink()
+            logger.info(f"Deleted face image: name={name}, filename={filename}")
+        except Exception as e:
+            logger.error(f"Failed to delete image file: name={name}, filename={filename}, error={str(e)}")
+            return False
+        
+        # Delete corresponding encoding file if it exists
+        encoding_filename = filename.replace('.jpg', '.npy')
+        encoding_file = person_dir / encoding_filename
+        if encoding_file.exists():
+            try:
+                encoding_file.unlink()
+                logger.info(f"Deleted face encoding: name={name}, filename={encoding_filename}")
+            except Exception as e:
+                logger.warning(f"Failed to delete encoding file: name={name}, filename={encoding_filename}, error={str(e)}")
+        
+        return True
     
     def get_known_faces(self) -> List[dict]:
         """Get list of all known people with their face counts."""

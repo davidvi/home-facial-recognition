@@ -11,6 +11,8 @@ const FaceManager = ({ onAddPerson }) => {
   const [deleting, setDeleting] = useState(null);
   const [expandedFaces, setExpandedFaces] = useState(new Set());
   const [zoomedImage, setZoomedImage] = useState(null);
+  const [showAddImagesModal, setShowAddImagesModal] = useState(null);
+  const [deletingImage, setDeletingImage] = useState(null);
 
   useEffect(() => {
     loadKnownFaces();
@@ -89,6 +91,25 @@ const FaceManager = ({ onAddPerson }) => {
     setZoomedImage(null);
   };
 
+  const handleDeleteImage = async (name, filename) => {
+    if (!window.confirm(`Are you sure you want to delete this image?`)) {
+      return;
+    }
+
+    try {
+      setDeletingImage(`${name}/${filename}`);
+      await deleteKnownFaceImage(name, filename);
+      await loadKnownFaces();
+      if (onAddPerson) {
+        onAddPerson();
+      }
+    } catch (err) {
+      setError(`Failed to delete image: ${err.message}`);
+    } finally {
+      setDeletingImage(null);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading known faces...</div>;
   }
@@ -136,7 +157,14 @@ const FaceManager = ({ onAddPerson }) => {
                   />
                 )}
                 <h3>{face.name}</h3>
-                <p>{face.image_count} {face.image_count === 1 ? 'face' : 'faces'}</p>
+                <p style={{ fontWeight: 'bold', color: face.image_count >= 3 ? '#27ae60' : face.image_count >= 2 ? '#f39c12' : '#e74c3c' }}>
+                  {face.image_count} {face.image_count === 1 ? 'face' : 'faces'}
+                  {face.image_count < 3 && (
+                    <span style={{ fontSize: '0.85em', fontWeight: 'normal', color: '#666', marginLeft: '5px' }}>
+                      ({face.image_count < 2 ? 'Add more for better accuracy' : 'More images improve accuracy'})
+                    </span>
+                  )}
+                </p>
                 
                 {isExpanded && images.length > 0 && (
                   <div style={{ marginTop: '15px', marginBottom: '10px' }}>
@@ -149,36 +177,70 @@ const FaceManager = ({ onAddPerson }) => {
                       gap: '10px'
                     }}>
                       {images.map((image) => (
-                        <img
-                          key={image.filename}
-                          src={getKnownFaceImageUrl(face.name, image.filename)}
-                          alt={`${face.name} - ${image.filename}`}
-                          style={{
-                            width: '100%',
-                            height: '100px',
-                            objectFit: 'cover',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            border: '2px solid #667eea',
-                            transition: 'transform 0.2s'
-                          }}
-                          onClick={() => handleImageClick(face.name, image.filename)}
-                          onMouseEnter={(e) => {
-                            e.target.style.transform = 'scale(1.05)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.transform = 'scale(1)';
-                          }}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
+                        <div key={image.filename} style={{ position: 'relative' }}>
+                          <img
+                            src={getKnownFaceImageUrl(face.name, image.filename)}
+                            alt={`${face.name} - ${image.filename}`}
+                            style={{
+                              width: '100%',
+                              height: '100px',
+                              objectFit: 'cover',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              border: '2px solid #667eea',
+                              transition: 'transform 0.2s'
+                            }}
+                            onClick={() => handleImageClick(face.name, image.filename)}
+                            onMouseEnter={(e) => {
+                              e.target.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.transform = 'scale(1)';
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                          {images.length > 1 && (
+                            <button
+                              onClick={() => handleDeleteImage(face.name, image.filename)}
+                              disabled={deletingImage === `${face.name}/${image.filename}`}
+                              style={{
+                                position: 'absolute',
+                                top: '5px',
+                                right: '5px',
+                                background: 'rgba(231, 76, 60, 0.9)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '24px',
+                                height: '24px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: deletingImage === `${face.name}/${image.filename}` ? 0.5 : 1
+                              }}
+                              title="Delete this image"
+                            >
+                              {deletingImage === `${face.name}/${image.filename}` ? '...' : '×'}
+                            </button>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>
                 )}
                 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    className="button"
+                    onClick={() => setShowAddImagesModal(face.name)}
+                    style={{ flex: images.length > 1 ? 1 : 'none' }}
+                  >
+                    + Add Images
+                  </button>
                   {images.length > 1 && (
                     <button
                       className="button"
@@ -283,6 +345,20 @@ const FaceManager = ({ onAddPerson }) => {
         <AddPerson
           onClose={() => setShowAddModal(false)}
           onSuccess={handlePersonAdded}
+        />
+      )}
+
+      {showAddImagesModal && (
+        <AddPerson
+          existingName={showAddImagesModal}
+          onClose={() => setShowAddImagesModal(null)}
+          onSuccess={() => {
+            setShowAddImagesModal(null);
+            loadKnownFaces();
+            if (onAddPerson) {
+              onAddPerson();
+            }
+          }}
         />
       )}
     </div>

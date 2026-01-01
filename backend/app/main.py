@@ -7,7 +7,7 @@ import os
 import logging
 from typing import List
 
-from .models import RecognizeResponse, RecognizeAllResponse, FaceResult, KnownFace, UnknownFace, NameFaceRequest
+from .models import RecognizeResponse, RecognizeAllResponse, SimpleRecognizeResponse, FaceResult, KnownFace, UnknownFace, NameFaceRequest
 from .face_service import FaceRecognitionService
 from .storage import FaceStorage
 
@@ -38,9 +38,10 @@ static_dir = Path(__file__).parent.parent / "static"
 static_dir.mkdir(exist_ok=True)  # Create directory if it doesn't exist
 
 
-@app.post("/api/recognize", response_model=RecognizeAllResponse)
+@app.post("/api/recognize", response_model=SimpleRecognizeResponse)
 async def recognize_face(image: UploadFile = File(..., alias="image")):
-    """Recognize all faces in the uploaded image. Accepts form POST with field name 'image' (Homey Image Token compatible)."""
+    """Recognize all faces in the uploaded image. Returns simplified format for Homey integration.
+    Accepts form POST with field name 'image' (Homey Image Token compatible)."""
     try:
         logger.info(f"Received face recognition request: filename={image.filename}, content_type={image.content_type}")
         image_data = await image.read()
@@ -50,21 +51,20 @@ async def recognize_face(image: UploadFile = File(..., alias="image")):
         
         logger.info(f"Face recognition result: total_faces={result['total_faces']}, event_id={result.get('event_id')}")
         
-        # Convert to response model, ensuring all values are JSON-serializable
-        face_results = [
-            FaceResult(
-                face_index=int(f['face_index']),
-                known_person=bool(f['known_person']),
-                name_person=str(f['name_person']) if f['known_person'] else "",
-                distance=float(f['distance']) if f.get('distance') is not None else None
-            )
-            for f in result['faces']
-        ]
+        # Extract unique names from recognized faces
+        recognized_names = set()
+        for face in result['faces']:
+            if face['known_person'] and face['name_person']:
+                recognized_names.add(face['name_person'])
         
-        return RecognizeAllResponse(
-            faces=face_results,
-            total_faces=result['total_faces'],
-            event_id=result.get('event_id')
+        known_person = len(recognized_names) > 0
+        name_persons = sorted(list(recognized_names))  # Sort for consistency
+        
+        logger.info(f"Simplified response: known_person={known_person}, name_persons={name_persons}")
+        
+        return SimpleRecognizeResponse(
+            known_person=known_person,
+            name_persons=name_persons
         )
     except Exception as e:
         logger.exception(f"Error processing image for recognition: {str(e)}")
@@ -107,6 +107,25 @@ async def get_known_face_image(name: str, filename: str):
         raise HTTPException(status_code=403, detail="Invalid filename")
     
     return FileResponse(image_file, media_type="image/jpeg")
+
+
+@app.delete("/api/known-faces/{name}/image/{filename}")
+async def delete_known_face_image(name: str, filename: str):
+    """Delete a specific face image for a known person."""
+    logger.info(f"Deleting face image: name={name}, filename={filename}")
+    try:
+        success = storage.delete_known_face_image(name, filename)
+        if not success:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        face_service.invalidate_cache()
+        logger.info(f"Successfully deleted face image: name={name}, filename={filename}")
+        return {"message": "Face image deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error deleting face image: name={name}, filename={filename}, error={str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error deleting face image: {str(e)}")
 
 
 @app.post("/api/known-faces")

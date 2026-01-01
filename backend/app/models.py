@@ -20,6 +20,11 @@ class RecognizeAllResponse(BaseModel):
     event_id: Optional[str] = None
 
 
+class SimpleRecognizeResponse(BaseModel):
+    known_person: bool
+    name_persons: List[str]
+
+
 class KnownFace(BaseModel):
     name: str
     image_count: int

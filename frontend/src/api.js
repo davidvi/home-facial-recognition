@@ -78,6 +78,11 @@ export const getKnownFaceImageUrl = (name, filename) => {
   return `${API_BASE_URL}/known-faces/${encodeURIComponent(name)}/image/${filename}`;
 };
 
+export const deleteKnownFaceImage = async (name, filename) => {
+  const response = await api.delete(`/known-faces/${encodeURIComponent(name)}/image/${filename}`);
+  return response.data;
+};
+
 export const getRecognitionHistory = async () => {
   const response = await api.get('/recognition-history');
   return response.data;
