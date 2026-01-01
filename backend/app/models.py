@@ -39,3 +39,8 @@ class UnknownFace(BaseModel):
 class NameFaceRequest(BaseModel):
     name: str
 
+
+class Settings(BaseModel):
+    webhook_url: Optional[str] = ""
+    webhook_enabled: bool = False
+

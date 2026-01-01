@@ -111,3 +111,13 @@ export const addFaceFromRecognition = async (eventId, faceIndex, name) => {
   return response.data;
 };
 
+export const getSettings = async () => {
+  const response = await api.get('/settings');
+  return response.data;
+};
+
+export const updateSettings = async (settings) => {
+  const response = await api.post('/settings', settings);
+  return response.data;
+};
+

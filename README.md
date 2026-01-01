@@ -1,27 +1,25 @@
-# Homey Face Recognition Server
+# Face Recognition Server
 
-A complete face recognition system for Homey home automation, designed to work with Ring cameras. The system consists of a FastAPI backend server and a React frontend for management. The server receives images via POST requests from Homey's Image Token system.
+A complete face recognition system with web interface for managing known faces and detecting unknown visitors. The system consists of a FastAPI backend server and a React frontend for management. The server receives images via POST requests and can trigger webhooks when known faces are recognized.
 
 ## Features
 
 - **Face Recognition**: Uses the `face_recognition` library to identify known faces
 - **Unknown Face Tracking**: Automatically saves unknown faces for later review and naming
 - **Web Interface**: React-based UI for managing known faces and reviewing unknown faces
-- **Homey Integration**: Compatible with Homey Image Token POST requests (works with apps like com.svipler.athom.imageposter)
-- **Ring Camera Support**: Designed to work with Ring camera images via Homey flows
+- **Webhook Integration**: Configure webhook URLs to trigger actions when known faces are recognized
+- **Recognition History**: View complete history of all face recognition events with images
 
 ## Architecture
 
 ```
-Ring Camera → Homey Flow → Image Token App → FastAPI Server → Face Recognition
-                                                                    ↓
-                                                              Known/Unknown?
-                                                                    ↓
-                                                              JSON Response
-                                                                    ↓
-                                                              Parse in Homey Flow
-                                                                    ↓
-                                                              Trigger Door Action
+Camera/System → POST Image → FastAPI Server → Face Recognition
+                                              ↓
+                                        Known/Unknown?
+                                              ↓
+                                        JSON Response
+                                              ↓
+                                        Webhook (if configured)
 ```
 
 ## Installation
@@ -94,19 +92,13 @@ npm run dev
 
 The frontend will be available at `http://localhost:5173` (Vite default port) with API proxying to the backend.
 
-### Homey Integration
+### API Integration
 
-This server is designed to work with Homey's Image Token system. You can use any Homey app that supports posting Image Tokens to a web server (such as `com.svipler.athom.imageposter`).
+This server accepts POST requests with images for face recognition. The image should be sent as multipart form data with the field name "image".
 
-1. Install an Image Token posting app on your Homey (e.g., `com.svipler.athom.imageposter`)
-
-2. Create a flow in Homey:
-   - Trigger: Ring camera motion/detection
-   - Action: Send Image Token to URL
-   - URL: `http://your-server-ip:8000/api/recognize`
-   - The image will be posted with the field name "image" (Homey Image Token standard)
-
-3. The server will recognize the face and return a JSON response with `known_person` and `name_person` fields
+1. Send a POST request to `http://your-server-ip:8000/api/recognize` with an image file
+2. The server will process the image and return a JSON response with recognition results
+3. If a webhook URL is configured in Settings, a GET request will be sent when a known face is recognized
 
 ## Configuration
 
@@ -139,40 +131,32 @@ Higher values (e.g., 0.8) = more lenient matching
 4. Enter a name and click "Name" to add them to known faces
 5. Or click "Delete" to remove unwanted detections
 
-### Homey Flow Setup
+### Webhook Configuration
 
-1. Create a flow in Homey that triggers on Ring camera motion/detection
-2. Add the "Send Image Token" action from your Image Token posting app
-3. Set the URL to: `http://your-server-ip:8000/api/recognize`
-4. Connect the image from Ring to the action
-5. The server will process the image and return JSON with `known_person` and `name_person`
-6. Use a webhook or HTTP response parser to extract the results and trigger actions:
-   - If `known_person` is true, you can unlock the door
-   - Use `name_person` to log who was detected
+1. Open the web interface and navigate to the Settings tab
+2. Enter a webhook URL (e.g., `https://your-automation-system.com/webhook`)
+3. Enable the webhook toggle
+4. Save the settings
 
-Example flow:
-```
-Ring Motion Detected
-  → Send Image Token to http://your-server:8000/api/recognize
-  → Parse HTTP Response
-  → If known_person = true
-    → Unlock Door
-    → Send Notification: "Welcome home, {name_person}!"
-```
+When a known face is recognized, the server will send a GET request to your webhook URL with query parameters:
+- `known_person=true`
+- `name_persons=John,Doe` (comma-separated list of recognized names)
+- `total_faces=2` (number of faces detected)
+- `event_id=recognition_20260101_123456` (unique event identifier)
 
-**Note**: The server accepts POST requests with form data where the image field is named "image" (Homey Image Token standard).
+**Note**: The server accepts POST requests with form data where the image field is named "image".
 
 ## API Endpoints
 
 ### `POST /api/recognize`
-Recognize a face in an uploaded image. Compatible with Homey Image Token POST requests.
+Recognize faces in an uploaded image.
 
-**Request**: Multipart form data with `image` field containing the image (Homey Image Token standard)
+**Request**: Multipart form data with `image` field containing the image file
 **Response**:
 ```json
 {
   "known_person": true,
-  "name_person": "John Doe"
+  "name_persons": ["John Doe", "Jane Doe"]
 }
 ```
 
@@ -208,6 +192,14 @@ Name an unknown face (move it to known faces).
 ### `DELETE /api/unknown-faces/{face_id}`
 Delete an unknown face.
 
+### `GET /api/settings`
+Get current server settings (webhook URL and enabled status).
+
+### `POST /api/settings`
+Update server settings.
+
+**Request**: JSON body with `webhook_url` (string) and `webhook_enabled` (boolean)
+
 ## File Structure
 
 Faces are stored in the `backend/faces/` directory:
@@ -229,13 +221,14 @@ If you encounter issues installing `dlib`, try:
 - Check that the tolerance setting is appropriate for your use case
 - Verify that face encodings are being saved correctly in the `faces/known/` directory
 
-### Homey Integration Issues
+### API Integration Issues
 
-- Verify the server URL is correct and accessible from your Homey device
+- Verify the server URL is correct and accessible from your client
 - Check that the FastAPI server is running and accessible
 - Ensure firewall rules allow connections on port 8000
-- Verify that the Image Token posting app is configured to send to `/api/recognize` endpoint
-- Make sure the image field name is "image" (standard for Homey Image Tokens)
+- Verify that POST requests are sent to `/api/recognize` endpoint
+- Make sure the image field name is "image" in the multipart form data
+- Check webhook URL is valid and accessible if webhooks are enabled
 
 ## License
 
@@ -245,5 +238,4 @@ MIT
 
 - Uses [face_recognition](https://github.com/ageitgey/face_recognition) library by Adam Geitgey
 - Built with FastAPI and React
-- Compatible with Homey Image Token system
 

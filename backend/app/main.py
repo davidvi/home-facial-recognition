@@ -6,8 +6,9 @@ from pathlib import Path
 import os
 import logging
 from typing import List
+import httpx
 
-from .models import RecognizeResponse, RecognizeAllResponse, SimpleRecognizeResponse, FaceResult, KnownFace, UnknownFace, NameFaceRequest
+from .models import RecognizeResponse, RecognizeAllResponse, SimpleRecognizeResponse, FaceResult, KnownFace, UnknownFace, NameFaceRequest, Settings
 from .face_service import FaceRecognitionService
 from .storage import FaceStorage
 
@@ -40,8 +41,8 @@ static_dir.mkdir(exist_ok=True)  # Create directory if it doesn't exist
 
 @app.post("/api/recognize", response_model=SimpleRecognizeResponse)
 async def recognize_face(image: UploadFile = File(..., alias="image")):
-    """Recognize all faces in the uploaded image. Returns simplified format for Homey integration.
-    Accepts form POST with field name 'image' (Homey Image Token compatible)."""
+    """Recognize all faces in the uploaded image. Returns simplified format for API integration.
+    Accepts form POST with field name 'image'."""
     try:
         logger.info(f"Received face recognition request: filename={image.filename}, content_type={image.content_type}")
         image_data = await image.read()
@@ -61,6 +62,33 @@ async def recognize_face(image: UploadFile = File(..., alias="image")):
         name_persons = sorted(list(recognized_names))  # Sort for consistency
         
         logger.info(f"Simplified response: known_person={known_person}, name_persons={name_persons}")
+        
+        # Trigger webhook if enabled and known person detected
+        if known_person:
+            try:
+                settings = storage.load_settings()
+                if settings.get("webhook_enabled") and settings.get("webhook_url"):
+                    webhook_url = settings["webhook_url"].strip()
+                    if webhook_url:
+                        # Build query parameters
+                        params = {
+                            "known_person": "true",
+                            "name_persons": ",".join(name_persons),
+                            "total_faces": str(result['total_faces'])
+                        }
+                        if result.get('event_id'):
+                            params["event_id"] = result['event_id']
+                        
+                        # Make async GET request (non-blocking)
+                        async with httpx.AsyncClient(timeout=5.0) as client:
+                            try:
+                                response = await client.get(webhook_url, params=params)
+                                logger.info(f"Webhook called successfully: url={webhook_url}, status={response.status_code}")
+                            except Exception as webhook_error:
+                                logger.warning(f"Webhook call failed (non-blocking): url={webhook_url}, error={str(webhook_error)}")
+            except Exception as webhook_exception:
+                # Don't fail the recognition request if webhook fails
+                logger.warning(f"Error processing webhook (non-blocking): {str(webhook_exception)}")
         
         return SimpleRecognizeResponse(
             known_person=known_person,
@@ -341,6 +369,39 @@ async def add_face_from_recognition(event_id: str, face_index: int, request: Nam
     except Exception as e:
         logger.exception(f"Error adding face from recognition event: event_id={event_id}, face_index={face_index}, name={request.name}, error={str(e)}")
         raise HTTPException(status_code=500, detail=f"Error adding face to known person: {str(e)}")
+
+
+@app.get("/api/settings", response_model=Settings)
+async def get_settings():
+    """Get current server settings."""
+    try:
+        settings = storage.load_settings()
+        return Settings(**settings)
+    except Exception as e:
+        logger.exception(f"Error loading settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error loading settings: {str(e)}")
+
+
+@app.post("/api/settings", response_model=Settings)
+async def update_settings(settings: Settings):
+    """Update server settings."""
+    try:
+        settings_dict = {
+            "webhook_url": settings.webhook_url or "",
+            "webhook_enabled": settings.webhook_enabled
+        }
+        
+        success = storage.save_settings(settings_dict)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to save settings")
+        
+        logger.info(f"Settings updated: webhook_enabled={settings.webhook_enabled}, webhook_url={'*' * 20 if settings.webhook_url else 'empty'}")
+        return Settings(**settings_dict)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error updating settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error updating settings: {str(e)}")
 
 
 # Serve static files (React app)

@@ -19,8 +19,10 @@ class FaceStorage:
         self.known_path = self.base_path / "known"
         self.unknown_path = self.base_path / "unknown"
         self.recognitions_path = self.base_path / "recognitions"
+        self.settings_path = self.base_path / "settings.json"
         
         # Create directories if they don't exist
+        self.base_path.mkdir(parents=True, exist_ok=True)
         self.known_path.mkdir(parents=True, exist_ok=True)
         self.unknown_path.mkdir(parents=True, exist_ok=True)
         self.recognitions_path.mkdir(parents=True, exist_ok=True)
@@ -511,4 +513,42 @@ class FaceStorage:
             logger.info(f"Deleted recognition event: event_id={event_id}")
             return True
         return False
+    
+    def load_settings(self) -> dict:
+        """Load settings from JSON file, return defaults if not exists."""
+        default_settings = {
+            "webhook_url": "",
+            "webhook_enabled": False
+        }
+        
+        if not self.settings_path.exists():
+            logger.info("Settings file not found, using defaults")
+            return default_settings
+        
+        try:
+            with open(self.settings_path, "r") as f:
+                settings = json.load(f)
+            
+            # Ensure all required keys exist
+            for key, default_value in default_settings.items():
+                if key not in settings:
+                    settings[key] = default_value
+            
+            logger.info(f"Loaded settings from {self.settings_path}")
+            return settings
+        except Exception as e:
+            logger.exception(f"Error loading settings: {str(e)}")
+            return default_settings
+    
+    def save_settings(self, settings: dict) -> bool:
+        """Save settings to JSON file."""
+        try:
+            with open(self.settings_path, "w") as f:
+                json.dump(settings, f, indent=2)
+            
+            logger.info(f"Saved settings to {self.settings_path}")
+            return True
+        except Exception as e:
+            logger.exception(f"Error saving settings: {str(e)}")
+            return False
 

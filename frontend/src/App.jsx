@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import FaceManager from './components/FaceManager';
 import UnknownFaces from './components/UnknownFaces';
 import RecognitionHistory from './components/RecognitionHistory';
+import Settings from './components/Settings';
 import './index.css';
 
 function App() {
@@ -16,7 +17,7 @@ function App() {
     <div className="container">
       <div className="header">
         <h1>Face Recognition Manager</h1>
-        <p>Manage known faces and review unknown faces detected by your Ring camera</p>
+        <p>Manage known faces and review unknown faces detected by your cameras</p>
       </div>
 
       <div className="tabs">
@@ -38,6 +39,12 @@ function App() {
         >
           Recognition History
         </button>
+        <button
+          className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          Settings
+        </button>
       </div>
 
       {activeTab === 'known' && (
@@ -50,6 +57,10 @@ function App() {
 
       {activeTab === 'history' && (
         <RecognitionHistory key={refreshKey} />
+      )}
+
+      {activeTab === 'settings' && (
+        <Settings />
       )}
     </div>
   );
