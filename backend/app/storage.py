@@ -518,7 +518,8 @@ class FaceStorage:
         """Load settings from JSON file, return defaults if not exists."""
         default_settings = {
             "webhook_url": "",
-            "webhook_enabled": False
+            "webhook_enabled": False,
+            "tolerance": 0.75
         }
         
         if not self.settings_path.exists():

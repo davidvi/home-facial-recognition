@@ -26,6 +26,13 @@ class FaceRecognitionService:
         """Invalidate the cache when faces are added/removed."""
         self._cache_dirty = True
     
+    def set_tolerance(self, tolerance: float):
+        """Update the tolerance value dynamically."""
+        if tolerance < 0.0 or tolerance > 1.0:
+            raise ValueError("Tolerance must be between 0.0 and 1.0")
+        self.tolerance = tolerance
+        logger.info(f"Tolerance updated to {tolerance}")
+    
     def _process_all_faces(self, image_data: bytes) -> Dict:
         """
         Process all faces in an image and return recognition results for each.

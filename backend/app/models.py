@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 
@@ -43,4 +43,5 @@ class NameFaceRequest(BaseModel):
 class Settings(BaseModel):
     webhook_url: Optional[str] = ""
     webhook_enabled: bool = False
+    tolerance: float = Field(default=0.75, ge=0.0, le=1.0, description="Face recognition tolerance (0.0=strict, 1.0=lenient)")
 

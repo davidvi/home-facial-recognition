@@ -48,6 +48,12 @@ async def recognize_face(image: UploadFile = File(..., alias="image")):
         image_data = await image.read()
         logger.info(f"Image size: {len(image_data)} bytes")
         
+        # Load tolerance from settings and apply to face service
+        settings = storage.load_settings()
+        tolerance = settings.get("tolerance", 0.75)
+        face_service.set_tolerance(tolerance)
+        logger.info(f"Using tolerance: {tolerance}")
+        
         result = face_service.recognize_all_faces(image_data)
         
         logger.info(f"Face recognition result: total_faces={result['total_faces']}, event_id={result.get('event_id')}")
@@ -66,7 +72,7 @@ async def recognize_face(image: UploadFile = File(..., alias="image")):
         # Trigger webhook if enabled and known person detected
         if known_person:
             try:
-                settings = storage.load_settings()
+                # Settings already loaded above, reuse it
                 if settings.get("webhook_enabled") and settings.get("webhook_url"):
                     webhook_url = settings["webhook_url"].strip()
                     if webhook_url:
@@ -384,8 +390,12 @@ async def update_settings(settings: Settings):
     try:
         settings_dict = {
             "webhook_url": settings.webhook_url or "",
-            "webhook_enabled": settings.webhook_enabled
+            "webhook_enabled": settings.webhook_enabled,
+            "tolerance": settings.tolerance
         }
+        
+        # Update face service tolerance immediately
+        face_service.set_tolerance(settings.tolerance)
         
         success = storage.save_settings(settings_dict)
         if not success:

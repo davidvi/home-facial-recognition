@@ -106,13 +106,14 @@ This server accepts POST requests with images for face recognition. The image sh
 
 The backend server runs on port 8000 by default. You can change this in `backend/app/main.py` or by setting environment variables.
 
-Face recognition tolerance is set to 0.75 (loose) by default. You can adjust this in `backend/app/main.py`:
-```python
-face_service = FaceRecognitionService(storage, tolerance=0.75)
-```
+### Face Recognition Sensitivity
 
-Lower values (e.g., 0.5) = more strict matching
-Higher values (e.g., 0.8) = more lenient matching
+Face recognition sensitivity (tolerance) can be adjusted in the Settings tab of the web interface. The default is 0.75 (balanced).
+
+- **Lower values (0.3-0.6)**: More strict matching, fewer false positives (recommended for door automation)
+- **Higher values (0.6-1.0)**: More lenient matching, might have more false positives
+
+Changes take effect immediately without restarting the server.
 
 ## Usage
 

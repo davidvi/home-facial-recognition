@@ -4,6 +4,7 @@ import { getSettings, updateSettings } from '../api';
 const Settings = () => {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookEnabled, setWebhookEnabled] = useState(false);
+  const [tolerance, setTolerance] = useState(0.75);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -20,6 +21,7 @@ const Settings = () => {
       const settings = await getSettings();
       setWebhookUrl(settings.webhook_url || '');
       setWebhookEnabled(settings.webhook_enabled || false);
+      setTolerance(settings.tolerance !== undefined ? settings.tolerance : 0.75);
     } catch (err) {
       setError(`Failed to load settings: ${err.message}`);
     } finally {
@@ -40,6 +42,12 @@ const Settings = () => {
       }
     }
 
+    // Validate tolerance
+    if (tolerance < 0 || tolerance > 1) {
+      setError('Tolerance must be between 0.0 and 1.0');
+      return;
+    }
+
     try {
       setSaving(true);
       setError(null);
@@ -47,7 +55,8 @@ const Settings = () => {
       
       await updateSettings({
         webhook_url: webhookUrl.trim(),
-        webhook_enabled: webhookEnabled
+        webhook_enabled: webhookEnabled,
+        tolerance: tolerance
       });
       
       setSuccess('Settings saved successfully!');
@@ -112,6 +121,56 @@ const Settings = () => {
           </label>
           <p style={{ fontSize: '0.85em', color: '#666', marginTop: '5px', marginLeft: '26px' }}>
             When enabled, webhook requests will be sent when known faces are recognized.
+          </p>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="tolerance" style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+            Recognition Sensitivity: {tolerance.toFixed(2)}
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <input
+              id="tolerance"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={tolerance}
+              onChange={(e) => setTolerance(parseFloat(e.target.value))}
+              disabled={saving}
+              style={{
+                flex: 1,
+                height: '8px',
+                cursor: saving ? 'not-allowed' : 'pointer'
+              }}
+            />
+            <input
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value={tolerance}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val) && val >= 0 && val <= 1) {
+                  setTolerance(val);
+                }
+              }}
+              disabled={saving}
+              style={{
+                width: '80px',
+                padding: '8px',
+                fontSize: '14px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                textAlign: 'center'
+              }}
+            />
+          </div>
+          <p style={{ fontSize: '0.85em', color: '#666', marginTop: '5px' }}>
+            <strong>Lower values (0.3-0.6)</strong> = More strict, fewer false positives (recommended for door automation)<br />
+            <strong>Higher values (0.6-1.0)</strong> = More lenient, might have more false positives<br />
+            <strong>Default: 0.75</strong> - Balanced setting
           </p>
         </div>
 
