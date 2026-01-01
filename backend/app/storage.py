@@ -29,7 +29,7 @@ class FaceStorage:
         """Extract and crop the first detected face from an image."""
         try:
             image = face_recognition.load_image_file(BytesIO(image_data))
-            face_locations = face_recognition.face_locations(image)
+            face_locations = face_recognition.face_locations(image, model="cnn")
             
             if not face_locations:
                 logger.warning("No faces detected in image for extraction")

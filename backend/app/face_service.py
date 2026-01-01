@@ -37,9 +37,9 @@ class FaceRecognitionService:
         """
         image = face_recognition.load_image_file(BytesIO(image_data))
         
-        # Get all face locations
-        face_locations = face_recognition.face_locations(image)
-        logger.info(f"Detected {len(face_locations)} face(s) in image")
+        # Get all face locations using CNN model for better accuracy
+        face_locations = face_recognition.face_locations(image, model="cnn")
+        logger.info(f"Detected {len(face_locations)} face(s) in image using CNN model")
         
         if not face_locations:
             return {
