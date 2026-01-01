@@ -3,7 +3,8 @@ import {
   getRecognitionHistory,
   deleteRecognitionEvent,
   getRecognitionOriginalImageUrl,
-  getRecognitionFaceImageUrl
+  getRecognitionFaceImageUrl,
+  addFaceFromRecognition
 } from '../api';
 
 const RecognitionHistory = () => {
@@ -12,6 +13,7 @@ const RecognitionHistory = () => {
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [expandedEvents, setExpandedEvents] = useState(new Set());
+  const [addingFace, setAddingFace] = useState(null);
 
   useEffect(() => {
     loadHistory();
@@ -64,6 +66,33 @@ const RecognitionHistory = () => {
       return date.toLocaleString();
     } catch {
       return timestamp;
+    }
+  };
+
+  const handleAddToKnown = async (eventId, faceIndex, currentName) => {
+    // Prompt for name, pre-fill with current name if known
+    const name = window.prompt(
+      `Enter the name for this face:`,
+      currentName || ''
+    );
+    
+    if (!name || name.trim() === '') {
+      return; // User cancelled or entered empty name
+    }
+    
+    const key = `${eventId}/${faceIndex}`;
+    try {
+      setAddingFace(key);
+      setError(null);
+      await addFaceFromRecognition(eventId, faceIndex, name.trim());
+      // Show success message
+      alert(`Face successfully added to known person "${name.trim()}"`);
+      // Optionally refresh the history to show updated status
+      await loadHistory();
+    } catch (err) {
+      setError(`Failed to add face to known person: ${err.message}`);
+    } finally {
+      setAddingFace(null);
     }
   };
 
@@ -200,6 +229,24 @@ const RecognitionHistory = () => {
                             <div style={{ fontSize: '0.8em', color: '#999', marginTop: '5px' }}>
                               Face #{face.face_index + 1}
                             </div>
+                            <button
+                              className="button"
+                              onClick={() => handleAddToKnown(event.event_id, face.face_index, face.known_person ? face.name_person : null)}
+                              disabled={addingFace === `${event.event_id}/${face.face_index}`}
+                              style={{
+                                marginTop: '10px',
+                                width: '100%',
+                                fontSize: '0.85em',
+                                padding: '6px 12px',
+                                backgroundColor: addingFace === `${event.event_id}/${face.face_index}` ? '#ccc' : '#667eea',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: addingFace === `${event.event_id}/${face.face_index}` ? 'not-allowed' : 'pointer'
+                              }}
+                            >
+                              {addingFace === `${event.event_id}/${face.face_index}` ? 'Adding...' : 'Add to Known'}
+                            </button>
                           </div>
                         ))}
                       </div>

@@ -106,3 +106,8 @@ export const getRecognitionFaceImageUrl = (eventId, faceIndex) => {
   return `${API_BASE_URL}/recognition-history/${eventId}/face/${faceIndex}`;
 };
 
+export const addFaceFromRecognition = async (eventId, faceIndex, name) => {
+  const response = await api.post(`/recognition-history/${eventId}/face/${faceIndex}/add-to-known`, { name });
+  return response.data;
+};
+

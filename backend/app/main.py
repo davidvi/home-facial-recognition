@@ -314,6 +314,35 @@ async def delete_recognition_event(event_id: str):
         raise HTTPException(status_code=500, detail=f"Error deleting recognition event: {str(e)}")
 
 
+@app.post("/api/recognition-history/{event_id}/face/{face_index}/add-to-known")
+async def add_face_from_recognition(event_id: str, face_index: int, request: NameFaceRequest):
+    """Add a face from a recognition event to known faces."""
+    logger.info(f"Adding face from recognition event to known faces: event_id={event_id}, face_index={face_index}, name={request.name}")
+    try:
+        # Get the face image data from the recognition event
+        face_image_data = storage.get_recognition_face_image_data(event_id, face_index)
+        if not face_image_data:
+            logger.warning(f"Face image not found: event_id={event_id}, face_index={face_index}")
+            raise HTTPException(status_code=404, detail="Face image not found in recognition event")
+        
+        # Save it as a known face
+        success = storage.save_known_face(request.name, face_image_data)
+        if not success:
+            logger.error(f"Failed to save known face: name={request.name}, event_id={event_id}, face_index={face_index}")
+            raise HTTPException(status_code=500, detail="Failed to save face as known person")
+        
+        # Invalidate cache so the new face is immediately available
+        face_service.invalidate_cache()
+        
+        logger.info(f"Successfully added face to known faces: name={request.name}, event_id={event_id}, face_index={face_index}")
+        return {"message": f"Face added to known person '{request.name}' successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error adding face from recognition event: event_id={event_id}, face_index={face_index}, name={request.name}, error={str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error adding face to known person: {str(e)}")
+
+
 # Serve static files (React app)
 if static_dir.exists():
     # Mount the entire static directory to serve assets
@@ -365,5 +394,5 @@ if static_dir.exists():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
 

@@ -486,6 +486,23 @@ class FaceStorage:
             return image_file
         return None
     
+    def get_recognition_face_image_data(self, event_id: str, face_index: int) -> Optional[bytes]:
+        """Get the face image data from a recognition event as bytes."""
+        try:
+            image_path = self.get_recognition_image_path(event_id, "face", face_index)
+            if not image_path:
+                logger.warning(f"Face image not found: event_id={event_id}, face_index={face_index}")
+                return None
+            
+            with open(image_path, "rb") as f:
+                image_data = f.read()
+            
+            logger.info(f"Read face image data: event_id={event_id}, face_index={face_index}, size={len(image_data)} bytes")
+            return image_data
+        except Exception as e:
+            logger.exception(f"Error reading face image data: event_id={event_id}, face_index={face_index}, error={str(e)}")
+            return None
+    
     def delete_recognition_event(self, event_id: str) -> bool:
         """Delete a recognition event."""
         event_dir = self.recognitions_path / event_id

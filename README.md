@@ -59,9 +59,11 @@ sudo apt-get install build-essential cmake libopenblas-dev liblapack-dev libx11-
 python -m app.main
 ```
 
+The server will automatically reload when you make changes to Python files (auto-reload enabled).
+
 Or using uvicorn directly:
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The server will be available at `http://localhost:8000`
